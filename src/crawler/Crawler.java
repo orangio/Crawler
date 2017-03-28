@@ -8,20 +8,27 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.LinkedList;
-import java.util.List;
-import java.io.File;
+import java.util.HashSet;
+
 
 
 /**
  * Created by Filip on 14.03.2017.
  */
 public class Crawler {
-    String URL = " ";
+    //String URL = " ";
     URL myurl = new URL("http://home.agh.edu.pl/~ggorecki/IS_Java/students.txt");
     int it=0;
 
     Set<Student> currentSet;
     Set<Student> previousSet;
+    Set<Student> removedSet;
+    Set<Student> addedSet;
+
+    List<Student> currentList;
+    List<Student> previousList;
+    MailLogger mail=new MailLogger();
+
 
     private final List<CrawlerListen> studentAddedListeners = new LinkedList<>();
     private final List<CrawlerListen> studentRemovedListeners = new LinkedList<>();
@@ -33,55 +40,67 @@ public class Crawler {
     public Crawler() throws MalformedURLException {
     }
 
-    public void setURL(String URL) {
-        this.URL = URL;
+    public void setURL(URL url) {
+        this.myurl = url;
     }
 
     public synchronized void run() throws Exception {
         if (myurl.getPath().equals(" "))
             throw new CrawlerException("Crawler Exception, Invalid/No URl");
 
+
+        currentList = StudentsParser.parse(myurl);
+
         while (true) {
-            int keepGoing = 2;
-            while (keepGoing > 0) {
-                listenersCall("start", null, it); // Wywołanie listenerów
+            listenersCall("start", null, it);
 
-                File tmpFile = new File(outputDirectory + String.valueOf(it)); // Tworzymy obiekt pliku "tmp"
-                FileUtils.copyURLToFile(url, tmpFile); // Wczytujemy dane z url to pliku
+            previousList = currentList;
+            currentList = StudentsParser.parse(myurl);
 
-                List<Student> previousData = currentData;
-                currentSet = StudentsParser.parse(tmpFile); // Parsujemy dane z pliku do currentData
-                currentSet.sort(
-                        (a, b) -> (a.getLastName() + a.getFirstName()).compareToIgnoreCase(b.getLastName() + b.getFirstName())); // Zawsze posortowane dane w liście ułatwią późniejsze porównywanie zmian
+            currentSet=new HashSet<>(currentList);
+            previousSet=new HashSet<>(previousList);
+            removedSet=new HashSet<>(previousList);
+            addedSet=new HashSet<>(currentList);
 
-                if (previousData != null && currentSet != null) {
-                    List<Student> added = getAdded(previousData, currentSet);
-                    List<Student> removed = getAdded(currentSet, previousData);
+            removedSet.removeAll(currentSet);
+            addedSet.removeAll(previousSet);
 
-                    if (added.size() == 0 && removed.size() == 0) { // Jeśli wielkości list currentData i previousData są takie same, to mamy pewność, że żaden student nie został dodani ani usunięty
-                        for (Student s : currentSet) {
-                            listenersCall("no", s, it);
-                        }
-                    } else {
-                        for (Student s : added) {
-                            listenersCall("add", s, it);
-                        }
+            currentList.sort(
+                    (a, b) -> (a.getLastName() + a.getFirstName()).compareToIgnoreCase(b.getLastName() + b.getFirstName()));
+            if (previousList != null && currentSet != null) {
 
-                        for (Student s : removed) {
-                            listenersCall("del", s, it);
-                        }
+
+                List<Student> added = getAdded(currentList, currentList);
+                List<Student> removed = getAdded(currentList, previousList);
+
+                if (addedSet.size() == 0 && removedSet.size() == 0) {
+                    for (Student s : currentSet) {
+                        listenersCall("no", s, it);
+                        mail.log("no",s);
+                    }
+                } else {
+                    for (Student s : addedSet) {
+                        listenersCall("add", s, it);
+                        mail.log("add",s);
                     }
 
+                    for (Student s : removedSet) {
+                        listenersCall("del", s, it);
+                        mail.log("del",s);
+                    }
                 }
 
-                Thread.sleep(1 * 1000); // Usypiamy wątek na określony czas (milisekundy)
-
-                it++; // Inkrementacja licznika iteracji
-                keepGoing--;
-                listenersCall("stop", null, it);
             }
-            StudentsParser.parse(myurl);
-            Thread.sleep(10000);
+
+            Thread.sleep(1 * 1000);
+
+            it++;
+            listenersCall("stop", null, it);
+            for (Student s : currentList) {
+                Set<Student> tmp =new HashSet<>();
+                tmp.add(s);
+                currentSet=tmp;
+            }
         }
     }
 
@@ -114,6 +133,19 @@ public class Crawler {
         }
     }
 
+    private List<Student> getAdded(List<Student> a, List<Student> b) {
+        List<Student> result = new LinkedList<>();
+
+            for (Student s : b) {
+                result.add(s.clone());
+            }
+
+            result.removeAll(a);
+
+        return result;
+    }
+
+
     public void addStudentAddedListener(CrawlerListen crawlerListener) {
         studentAddedListeners.add(crawlerListener);
     }
@@ -136,8 +168,7 @@ public class Crawler {
 
 
     List<Student> extractStudents(OrderMode mode) {
-        List<Student> students = new ArrayList<Student>();
-        students.addAll(currentSet);
+        List<Student> students = new ArrayList<Student>(currentSet);
 
         switch (mode) {
             case age:

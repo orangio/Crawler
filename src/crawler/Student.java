@@ -46,7 +46,22 @@ public class Student
 	{
 		this.age = age;
 	}
-	
+
+	Student()
+	{
+		this.firstName="Janusz";
+		this.lastName="Kupiec";
+		this.age=22;
+		this.mark=4.5;
+	}
+
+	Student(Student a)
+	{
+		this.setFirstName(getFirstName());
+		this.setLastName(getLastName());
+		this.setMark(getMark());
+		this.setAge(getAge());
+	}
 	@Override
 	public int hashCode()
 	{
@@ -63,8 +78,14 @@ public class Student
 		
 		return result;
 	}
-	
+
 	@Override
+	public Student clone()
+	{
+		Student a = new Student(this);
+		return a;
+	}
+
 	public boolean equals( Object obj )
 	{
 		if ( this == obj )

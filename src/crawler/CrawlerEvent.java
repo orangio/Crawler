@@ -4,7 +4,6 @@ package crawler;
  * Created by Filip on 19.03.2017.
  */
 public class CrawlerEvent {
-    //private final CrawlerEventType type;
     private String type;
     private Crawler crawler;
     private Student student;
