@@ -47,7 +47,7 @@ public class Student
 		this.age = age;
 	}
 
-	Student()
+	public Student()
 	{
 		this.firstName="Janusz";
 		this.lastName="Kupiec";

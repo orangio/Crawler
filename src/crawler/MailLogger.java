@@ -10,35 +10,47 @@ import javax.mail.internet.*;
 import java.util.Properties.*;
 import javax.activation.*;
 
-public class MailLogger implements Logger {
+public class MailLogger implements Logger, CrawlerEventListener {
 
     private static String adress = "programcrawler@gmail.com";
     private static String pass ="qwertasdfg";
     private static String mailto="filip.bartman@gmail.com";
+    Properties properties = System.getProperties();
+    Session session;
+
+    public void onStudentAdded(Student a)
+    {
+        log("add",a);
+    }
+    public void onStudentDeleted(Student a)
+    {
+        log("del",a);
+    }
+    public void onNoChange()
+    {
+        Student a=new Student();
+        log("no",a);
+    }
+    public  MailLogger()
+    {
+        properties.setProperty("mail.smtp.host","smtp.gmail.com");
+        properties.setProperty("mail.smtp.socketFactory.port", "465");
+        properties.setProperty("mail.smtp.socketFactory.class","javax.net.ssl.SSLSocketFactory");
+        properties.setProperty("mail.smtp.auth","true");
+        properties.setProperty("mail.smtp.port", "465");
+        session = Session.getDefaultInstance(properties,
+
+                new javax.mail.Authenticator(){
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication(){
+                        return new PasswordAuthentication(adress,pass);
+                    }
+                });
+        session.setDebug(true);
+
+
+    }
         public  void log(String status, Student student) {
-
-            Properties properties = System.getProperties();
-
-            // Setup mail server
-            properties.setProperty("mail.smtp.host","smtp.gmail.com");
-            properties.setProperty("mail.smtp.socketFactory.port", "465");
-            properties.setProperty("mail.smtp.socketFactory.class","javax.net.ssl.SSLSocketFactory");
-            properties.setProperty("mail.smtp.auth","true");
-            properties.setProperty("mail.smtp.port", "465");
-
-            //properties.setProperty("mail.user", "programcrawler");
-            //properties.setProperty("mail.password", "qwertasdfg");
-
-            // Get the default Session object.
-            Session session = Session.getDefaultInstance(properties,
-
-            new javax.mail.Authenticator(){
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication(){
-                    return new PasswordAuthentication(adress,pass);
-                }
-            });
-            session.setDebug(true);
             try {
                 // Create a default MimeMessage object.
                 Message message = new MimeMessage(session);
@@ -55,11 +67,11 @@ public class MailLogger implements Logger {
                 // Now set the actual message
                 switch (status){
                     case "add":
-                        message.setText("STUDENT ADDED "+student.getFirstName()+" "+student.getLastName()+student.getMark()+" "+student.getAge());
+                        message.setText("STUDENT ADDED "+student.getFirstName()+" "+student.getLastName()+" "+student.getMark()+" "+student.getAge());
                         break;
 
                     case "del":
-                        message.setText("STUDENT REMOVED"+student.getFirstName()+" "+student.getLastName()+student.getMark()+" "+student.getAge());
+                        message.setText("STUDENT REMOVED"+student.getFirstName()+" "+student.getLastName()+" "+student.getMark()+" "+student.getAge());
                         break;
 
                     case "no":
@@ -68,6 +80,8 @@ public class MailLogger implements Logger {
 
 
                 }
+
+
 
                 //message.setText("This is actual message");
 
